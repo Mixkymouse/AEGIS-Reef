@@ -549,15 +549,48 @@ footer a:hover{text-decoration:underline;}
   function beep(){
     try{
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.frequency.value = 880;
-      g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.18, audioCtx.currentTime + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
-      o.connect(g); g.connect(audioCtx.destination);
-      o.start(); o.stop(audioCtx.currentTime + 0.62);
-    }catch(e){}
+
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      const master = audioCtx.createGain();
+      master.gain.value = 1.0;
+      master.connect(audioCtx.destination);
+
+      const playTone = (freq, start, duration, volume = 1.0) => {
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+
+        o.type = 'square';
+        o.frequency.value = freq;
+
+        g.gain.setValueAtTime(0.0001, audioCtx.currentTime + start);
+        g.gain.exponentialRampToValueAtTime(
+          volume,
+          audioCtx.currentTime + start + 0.01
+        );
+        g.gain.exponentialRampToValueAtTime(
+          0.0001,
+          audioCtx.currentTime + start + duration
+        );
+
+        o.connect(g);
+        g.connect(master);
+
+        o.start(audioCtx.currentTime + start);
+        o.stop(audioCtx.currentTime + start + duration);
+      };
+
+      // เสียงเตือนดัง 4 จังหวะ
+      playTone(1200, 0.00, 0.35);
+      playTone(900,  0.40, 0.35);
+      playTone(1200, 0.80, 0.35);
+      playTone(900,  1.20, 0.60);
+
+    }catch(e){
+      console.error('Audio error:', e);
+    }
   }
 
   function showAlert(data){
